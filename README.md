@@ -7,17 +7,17 @@ Converts Eth2 EIP-2335 scrypt keystores to pbkdf2 keystores (and vice-versa).
 Converting a scrypt keystore to pbkdf2 using stdin/stdout
 
 ```
-cat data/keystore-scrypt.json \
-  | ./bin/eth2-keystore-converter -p $(cat data/keystore-scrypt.txt) \
+cat keystore-scrypt.json \
+  | eth2-keystore-converter -p $(cat keystore-scrypt.txt) \
   > keystore-pbkdf2.json
 ```
 
 Converting a pbkdf2 keystore to scrypt using options
 
 ```
-./bin/eth2-keystore-converter \
-  -f data/keystore-pbkdf2.json \
-  -p $(cat data/keystore-pbkdf2.txt) \
+eth2-keystore-converter \
+  -f keystore-pbkdf2.json \
+  -p $(cat keystore-pbkdf2.txt) \
   -c scrypt \
   -o keystore-scrypt.json
 ```
