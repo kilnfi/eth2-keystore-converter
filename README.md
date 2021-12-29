@@ -1,6 +1,6 @@
 # eth2-keystore-converter
 
-Converts Eth2 EIP-2335 scrypt keystores to pbkdf2 keystores (and vice-versa).
+Convert Eth2 EIP-2335 scrypt keystores to pbkdf2 keystores (and vice-versa).
 
 ## Usage
 
@@ -30,4 +30,4 @@ Thus, converting on the fly all keystores to pbkdf2 makes it easier to operate e
 
 ## Credits
 
-This utility is mostly a wrapper for the [go-eth2-wallet-encryptor-keystorev4](https://github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4]) library.
+This utility is mostly a wrapper for the [go-eth2-wallet-encryptor-keystorev4](https://github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4) library.
