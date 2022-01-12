@@ -22,10 +22,12 @@ type Keystore struct {
 }
 
 type Options struct {
-	Cipher     string
-	InputFile  string
-	OutputFile string
-	Password   string
+	Cipher        string
+	InputFile     string
+	OutputFile    string
+	Password      string
+	NewPassword   string
+	ResetPassword bool
 }
 
 func main() {
@@ -34,7 +36,9 @@ func main() {
 	flag.StringVar(&opt.Cipher, "c", "pbkdf2", "Cipher (scrypt|pbkdf2)")
 	flag.StringVar(&opt.InputFile, "f", "", "Keystore file (if empty read stdin)")
 	flag.StringVar(&opt.OutputFile, "o", "", "Keystore file (if empty read stdin)")
-	flag.StringVar(&opt.Password, "p", "", "Keystore password")
+	flag.StringVar(&opt.Password, "p", "", "Keystore decrypting password")
+	flag.StringVar(&opt.NewPassword, "n", "", "Set another password for generated keystore")
+	flag.BoolVar(&opt.ResetPassword, "x", false, "Set empty password for generated keystore")
 	flag.Parse()
 
 	if err := run(opt); err != nil {
@@ -83,7 +87,14 @@ func run(opt Options) error {
 		return err
 	}
 
-	crypto, err := encryptor.Encrypt(secret, opt.Password)
+	password := opt.Password
+	if opt.ResetPassword {
+		password = ""
+	} else if opt.NewPassword != "" {
+		password = opt.NewPassword
+	}
+
+	crypto, err := encryptor.Encrypt(secret, password)
 	if err != nil {
 		return err
 	}
