@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 
+	"github.com/urfave/cli/v2"
 	keystorev4 "github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4"
 )
 
@@ -28,42 +30,73 @@ type Options struct {
 	Password   string
 }
 
+var Flags = []cli.Flag{
+	&cli.StringFlag{
+		Name:    "cipher",
+		Value:   "pbkdf2",
+		Aliases: []string{"c"},
+		Usage:   "Cipher to use to encrypt the keystore (scrypt|pbkdf2)",
+	},
+	&cli.StringFlag{
+		Name:    "input",
+		Aliases: []string{"f"},
+		Usage:   "Keystore file (if empty read stdin)",
+	},
+	&cli.StringFlag{
+		Name:    "output",
+		Aliases: []string{"o"},
+		Usage:   "Keystore file (if empty read stdin)",
+	},
+	&cli.StringFlag{
+		Name:    "password",
+		Value:   "",
+		Aliases: []string{"p"},
+		Usage:   "Keystore password",
+	},
+}
+
 func main() {
-	opt := Options{}
+	app := &cli.App{
+		Name:   "eth2-keystore-converter",
+		Usage:  "Decrypt or recrypt ethereum keystore files",
+		Flags:  Flags,
+		Action: Run,
+	}
 
-	flag.StringVar(&opt.Cipher, "c", "pbkdf2", "Cipher (scrypt|pbkdf2)")
-	flag.StringVar(&opt.InputFile, "f", "", "Keystore file (if empty read stdin)")
-	flag.StringVar(&opt.OutputFile, "o", "", "Keystore file (if empty read stdin)")
-	flag.StringVar(&opt.Password, "p", "", "Keystore password")
-	flag.Parse()
-
-	if err := run(opt); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %s\n", err)
+	if err := app.Run(os.Args); err != nil && !errors.Is(err, context.Canceled) {
+		slog.Error(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(opt Options) error {
-	var err error
+func Run(cCtx *cli.Context) error {
+	var (
+		err error
 
-	encryptor := keystorev4.New(keystorev4.WithCipher(opt.Cipher))
+		inputFile  = cCtx.String("input")
+		outputFile = cCtx.String("output")
+		password   = cCtx.String("password")
+		cipher     = cCtx.String("cipher")
+	)
+
+	encryptor := keystorev4.New(keystorev4.WithCipher(cipher))
 	keystore := &Keystore{}
 
-	if opt.InputFile != "" && opt.InputFile == opt.OutputFile {
+	if inputFile != "" && inputFile == outputFile {
 		return errors.New("input and output files must be different")
 	}
 
 	input := os.Stdin
-	if opt.InputFile != "" {
-		input, err = os.Open(opt.InputFile)
+	if inputFile != "" {
+		input, err = os.Open(inputFile)
 		if err != nil {
 			return errors.New("could not read keystore file")
 		}
 	}
 
 	output := os.Stdout
-	if opt.OutputFile != "" {
-		output, err = os.Create(opt.OutputFile)
+	if outputFile != "" {
+		output, err = os.Create(outputFile)
 		if err != nil {
 			return errors.New("could not write to file")
 		}
@@ -78,12 +111,12 @@ func run(opt Options) error {
 		return errors.New("could not decode keystore json")
 	}
 
-	secret, err := encryptor.Decrypt(keystore.Crypto, opt.Password)
+	secret, err := encryptor.Decrypt(keystore.Crypto, password)
 	if err != nil {
 		return err
 	}
 
-	crypto, err := encryptor.Encrypt(secret, opt.Password)
+	crypto, err := encryptor.Encrypt(secret, password)
 	if err != nil {
 		return err
 	}
