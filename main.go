@@ -53,6 +53,11 @@ var Flags = []cli.Flag{
 		Aliases: []string{"p"},
 		Usage:   "Keystore password",
 	},
+	&cli.BoolFlag{
+		Name:  "raw",
+		Value: false,
+		Usage: "Print raw key without encryption",
+	},
 }
 
 func main() {
@@ -77,6 +82,7 @@ func Run(cCtx *cli.Context) error {
 		outputFile = cCtx.String("output")
 		password   = cCtx.String("password")
 		cipher     = cCtx.String("cipher")
+		raw        = cCtx.Bool("raw")
 	)
 
 	encryptor := keystorev4.New(keystorev4.WithCipher(cipher))
@@ -114,6 +120,11 @@ func Run(cCtx *cli.Context) error {
 	secret, err := encryptor.Decrypt(keystore.Crypto, password)
 	if err != nil {
 		return err
+	}
+
+	if raw {
+		fmt.Fprintf(output, "0x%x", secret)
+		return nil
 	}
 
 	crypto, err := encryptor.Encrypt(secret, password)
