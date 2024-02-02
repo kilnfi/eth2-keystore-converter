@@ -23,13 +23,6 @@ type Keystore struct {
 	Version     uint                   `json:"version"`
 }
 
-type Options struct {
-	Cipher     string
-	InputFile  string
-	OutputFile string
-	Password   string
-}
-
 var Flags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    "cipher",
@@ -51,7 +44,12 @@ var Flags = []cli.Flag{
 		Name:    "password",
 		Value:   "",
 		Aliases: []string{"p"},
-		Usage:   "Keystore password",
+		Usage:   "Keystore decrypting password",
+	},
+	&cli.StringFlag{
+		Name:  "new-password",
+		Value: "",
+		Usage: "Set another password for generated keystore",
 	},
 	&cli.BoolFlag{
 		Name:  "raw",
@@ -78,11 +76,12 @@ func Run(cCtx *cli.Context) error {
 	var (
 		err error
 
-		inputFile  = cCtx.String("input")
-		outputFile = cCtx.String("output")
-		password   = cCtx.String("password")
-		cipher     = cCtx.String("cipher")
-		raw        = cCtx.Bool("raw")
+		inputFile   = cCtx.String("input")
+		outputFile  = cCtx.String("output")
+		password    = cCtx.String("password")
+		newPassword = cCtx.String("new-password")
+		cipher      = cCtx.String("cipher")
+		raw         = cCtx.Bool("raw")
 	)
 
 	encryptor := keystorev4.New(keystorev4.WithCipher(cipher))
@@ -110,7 +109,7 @@ func Run(cCtx *cli.Context) error {
 
 	err = json.NewDecoder(input).Decode(&keystore)
 	if err != nil {
-		return err
+		return errors.New("could not decode keystore json")
 	}
 
 	if keystore.Pubkey == "" {
@@ -119,7 +118,7 @@ func Run(cCtx *cli.Context) error {
 
 	secret, err := encryptor.Decrypt(keystore.Crypto, password)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not decrypt keystore: %w", err)
 	}
 
 	if raw {
@@ -127,16 +126,20 @@ func Run(cCtx *cli.Context) error {
 		return nil
 	}
 
+	if newPassword != "" {
+		password = newPassword
+	}
+
 	crypto, err := encryptor.Encrypt(secret, password)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not encrypt keystore: %w", err)
 	}
 
 	keystore.Crypto = crypto
 
 	keystore2, err := json.Marshal(keystore)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not encode keystore to json: %w", err)
 	}
 
 	fmt.Fprint(output, string(keystore2))
