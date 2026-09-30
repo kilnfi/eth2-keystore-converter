@@ -38,7 +38,7 @@ var Flags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    "output",
 		Aliases: []string{"o"},
-		Usage:   "Keystore file (if empty read stdin)",
+		Usage:   "Keystore output file (if empty, write to stdout)",
 	},
 	&cli.StringFlag{
 		Name:    "password",
@@ -93,18 +93,26 @@ func Run(cCtx *cli.Context) error {
 
 	input := os.Stdin
 	if inputFile != "" {
-		input, err = os.Open(inputFile)
+		// Open the input file read-only so the clear-text secret cannot be
+		// modified through this handle, and close it before returning.
+		inputFileHandle, err := os.Open(inputFile)
 		if err != nil {
 			return errors.New("could not read keystore file")
 		}
+		defer inputFileHandle.Close()
+		input = inputFileHandle
 	}
 
 	output := os.Stdout
 	if outputFile != "" {
-		output, err = os.Create(outputFile)
+		// Create the output file with owner-only (0600) permissions because
+		// it may hold re-encrypted secret material.
+		outputFileHandle, err := os.OpenFile(outputFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {
 			return errors.New("could not write to file")
 		}
+		defer outputFileHandle.Close()
+		output = outputFileHandle
 	}
 
 	err = json.NewDecoder(input).Decode(&keystore)
